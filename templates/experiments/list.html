@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}实验管理 - 电化学数据库{% endblock %}
+{% block page_title %}实验管理{% endblock %}
+{% block content %}
+<!-- Search / Filter Card -->
+<div class="card">
+    <div class="card-header" data-bs-toggle="collapse" data-bs-target="#searchCollapse" role="button">
+        <i class="bi bi-funnel me-1"></i> 筛选与搜索
+        <span class="float-end"><i class="bi bi-chevron-down"></i></span>
+    </div>
+    <div class="collapse show" id="searchCollapse">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('experiment_list') }}" class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label small">工作电极材料</label>
+                    <input type="text" name="we_material" class="form-control form-control-sm" value="{{ request.args.get('we_material', '') }}" placeholder="如：Pt, Ni泡沫">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">溶剂</label>
+                    <input type="text" name="solvent" class="form-control form-control-sm" value="{{ request.args.get('solvent', '') }}" placeholder="如：水, MeCN">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">底物</label>
+                    <input type="text" name="substrate" class="form-control form-control-sm" value="{{ request.args.get('substrate', '') }}" placeholder="如：CO₂, H₂O">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">支持电解质</label>
+                    <input type="text" name="electrolyte" class="form-control form-control-sm" value="{{ request.args.get('electrolyte', '') }}" placeholder="如：KOH">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">电化学模式</label>
+                    <select name="electro_mode" class="form-select form-select-sm">
+                        <option value="">全部</option>
+                        <option value="恒电流" {% if request.args.get('electro_mode') == '恒电流' %}selected{% endif %}>恒电流</option>
+                        <option value="恒电位" {% if request.args.get('electro_mode') == '恒电位' %}selected{% endif %}>恒电位</option>
+                        <option value="循环伏安(CV)" {% if request.args.get('electro_mode') == '循环伏安(CV)' %}selected{% endif %}>CV</option>
+                        <option value="线性扫描" {% if request.args.get('electro_mode') == '线性扫描' %}selected{% endif %}>线性扫描</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">pH 范围</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" step="0.1" name="ph_min" class="form-control" value="{{ request.args.get('ph_min', '') }}" placeholder="最小">
+                        <span class="input-group-text">-</span>
+                        <input type="number" step="0.1" name="ph_max" class="form-control" value="{{ request.args.get('ph_max', '') }}" placeholder="最大">
+                        <div id="sim_smiles_input_preview" style="min-height:28px;font-size:0.78rem;color:rgba(255,255,255,0.4);margin-top:2px;"></div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">温度范围 (℃)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" step="1" name="temp_min" class="form-control" value="{{ request.args.get('temp_min', '') }}" placeholder="最小">
+                        <span class="input-group-text">-</span>
+                        <input type="number" step="1" name="temp_max" class="form-control" value="{{ request.args.get('temp_max', '') }}" placeholder="最大">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">参考来源</label>
+                    <select name="reference_type" class="form-select form-select-sm">
+                        <option value="">全部</option>
+                        <option value="literature" {% if request.args.get('reference_type') == 'literature' %}selected{% endif %}>文献</option>
+                        <option value="patent" {% if request.args.get('reference_type') == 'patent' %}selected{% endif %}>专利</option>
+                        <option value="none" {% if request.args.get('reference_type') == 'none' %}selected{% endif %}>内部</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">结构式搜索</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="sim_smiles" class="form-control" placeholder="SMILES或绘制" value="{{ request.args.get('sim_smiles', '') }}">
+                        <button type="button" class="btn btn-outline-primary" onclick="openMoleculeEditor('jsmeModal', 'sim_smiles_input', null)"><i class="bi bi-pen"></i></button>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">相似度</label>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="range" name="sim_threshold" class="form-range" min="0" max="1" step="0.05" value="0.3" id="simSlider" style="width:80px;">
+                        <span id="simValue" class="small text-muted" style="width:35px;">0.30</span>
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-1">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i> 搜索</button>
+                    <a href="{{ url_for('experiment_list') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-circle"></i> 重置</a>
+                    <a href="{{ url_for('experiment_create') }}" class="btn btn-success btn-sm"><i class="bi bi-plus-lg"></i> 新建</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Experiments Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul me-1"></i> 实验列表</span>
+        <small class="text-muted">共 {{ experiments.total }} 条记录</small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="experimentTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>编号</th>
+                        <th>实验名称</th>
+                        <th>工作电极</th>
+                        <th>溶剂</th>
+                        <th>底物</th>
+                        <th>模式</th>
+                        <th>pH</th>
+                        <th>温度</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exp in experiments.items %}
+                    <tr>
+                        <td>{{ exp.id }}</td>
+                        <td>
+                            <a href="{{ url_for('experiment_detail', experiment_id=exp.id) }}" class="text-decoration-none fw-medium">
+                                {{ exp.name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% for e in exp.electrodes %}
+                                {% if e.electrode_type == 'WE' %}
+                                    <span class="badge bg-light text-dark">{{ e.material }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% for e in exp.electrolytes %}
+                                <small>{{ e.solvent }}</small>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% for s in exp.samples %}
+                                <small>{{ s.name }}</small>
+                            {% endfor %}
+                        </td>
+                        <td><span class="badge-mode">{{ exp.electro_mode }}</span></td>
+                        <td>{{ exp.ph if exp.ph is not none else '-' }}</td>
+                        <td>{{ exp.temperature if exp.temperature is not none else '-' }}℃</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('experiment_detail', experiment_id=exp.id) }}" class="btn btn-outline-primary" title="查看">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('experiment_edit', experiment_id=exp.id) }}" class="btn btn-outline-secondary" title="编辑">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('experiment_delete', experiment_id=exp.id) }}" style="display:inline" onsubmit="return confirm('确定删除此实验？')">
+                                    <button type="submit" class="btn btn-outline-danger" title="删除">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                            <p class="mt-2">暂无实验记录</p>
+                            <a href="{{ url_for('experiment_create') }}" class="btn btn-primary btn-sm">创建第一个实验</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if experiments.pages > 1 %}
+    <div class="card-footer">
+        <nav>
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                {% for page_num in experiments.iter_pages() %}
+                    {% if page_num %}
+                    <li class="page-item {% if page_num == experiments.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('experiment_list', page=page_num, **request_args) }}">{{ page_num }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+$(document).ready(function() {
+    $('#experimentTable').DataTable({
+        paging: false,
+        info: false,
+        ordering: true,
+        language: { search: "快速过滤:", lengthMenu: "每页显示 _MENU_ 条" }
+    });
+});
+</script>
+<script>
+// Similarity slider display
+var slider = document.getElementById('simSlider');
+var valDisplay = document.getElementById('simValue');
+if (slider && valDisplay) {
+    slider.addEventListener('input', function() {
+        valDisplay.textContent = parseFloat(this.value).toFixed(2);
+    });
+}
+// Hidden input for JSME search
+var simInput = document.querySelector('input[name="sim_smiles"]');
+if (simInput) {
+    simInput.id = 'sim_smiles_input';
+}
+</script>
+{% endblock %}
