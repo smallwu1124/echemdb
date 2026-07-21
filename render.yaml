@@ -1,9 +1,9 @@
-﻿services:
+services:
   - type: web
     name: echemdb
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python app.py --port=\ --host=0.0.0.0
+    startCommand: python app.py --port=$PORT --host=0.0.0.0
     envVars:
       - key: SECRET_KEY
         generateValue: true
