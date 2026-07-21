@@ -1,0 +1,127 @@
+﻿{% extends "base.html" %}
+{% block title %}反应式检索 - EChemDB{% endblock %}
+{% block page_title %}<i class="bi bi-search"></i> 反应式检索{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:320px 1fr;gap:0.75rem;">
+    <div class="card"><div class="card-header"><i class="bi bi-funnel"></i> 检索条件</div><div class="card-body">
+        <form method="POST" action="{{ url_for('reaction_search') }}">
+            {{ form.hidden_tag() }}
+            <div style="margin-bottom:0.75rem;">
+                <label class="form-label">反应物 SMILES</label>
+                <div style="display:flex;gap:0.25rem;">
+                    {{ form.reactant_smiles(class="form-control form-control-sm", id="reactant_smiles", placeholder="SMILES 或绘制") }}
+                    <button type="button" class="btn btn-outline btn-sm" onclick='openMoleculeEditor("jsmeModal", "reactant_smiles", null)'><i class="bi bi-pen"></i></button>
+                </div>
+                <div id="reactant_smiles_preview" class="text-center mt-2 p-2 rounded" style="background:var(--bg-input);border:1px dashed var(--border);min-height:36px;font-size:0.75rem;color:var(--text-dim);">绘制或输入反应物结构式</div>
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label class="form-label">产物 SMILES</label>
+                <div style="display:flex;gap:0.25rem;">
+                    {{ form.product_smiles(class="form-control form-control-sm", id="product_smiles", placeholder="SMILES 或绘制") }}
+                    <button type="button" class="btn btn-outline btn-sm" onclick='openMoleculeEditor("jsmeModal", "product_smiles", null)'><i class="bi bi-pen"></i></button>
+                </div>
+                <div id="product_smiles_preview" class="text-center mt-2 p-2 rounded" style="background:var(--bg-input);border:1px dashed var(--border);min-height:36px;font-size:0.75rem;color:var(--text-dim);">绘制或输入产物结构式</div>
+            </div>
+            <div style="margin-bottom:0.6rem;">
+                <label class="form-label">相似度阈值</label>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <input type="range" name="sim_threshold" class="form-range" style="flex:1;" min="0" max="1" step="0.05" value="{{ form.sim_threshold.data or 0.3 }}" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)">
+                    <span class="text-sm text-dim" style="width:36px;text-align:right;">{{ '%.2f'|format(form.sim_threshold.data or 0.3) }}</span>
+                </div>
+            </div>
+            <hr>
+            <div style="margin-bottom:0.4rem;"><label class="form-label text-sm">{{ form.we_material.label.text }}</label>{{ form.we_material(class="form-control form-control-sm", placeholder="如: Pt, Ni泡沫") }}</div>
+            <div style="margin-bottom:0.4rem;"><label class="form-label text-sm">{{ form.solvent.label.text }}</label>{{ form.solvent(class="form-control form-control-sm", placeholder="如: H2O, MeCN") }}</div>
+            <div style="margin-bottom:0.4rem;"><label class="form-label text-sm">{{ form.electro_mode.label.text }}</label>{{ form.electro_mode(class="form-select form-select-sm") }}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem;margin-bottom:0.4rem;">
+                <div><label class="form-label text-xs">pH 最小</label>{{ form.ph_min(class="form-control form-control-sm", placeholder="pH") }}</div>
+                <div><label class="form-label text-xs">pH 最大</label>{{ form.ph_max(class="form-control form-control-sm", placeholder="pH") }}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem;margin-bottom:0.4rem;">
+                <div><label class="form-label text-xs">温度 最小 (C)</label>{{ form.temp_min(class="form-control form-control-sm", placeholder="C") }}</div>
+                <div><label class="form-label text-xs">温度 最大 (C)</label>{{ form.temp_max(class="form-control form-control-sm", placeholder="C") }}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem;margin-bottom:0.4rem;">
+                <div><label class="form-label text-xs">电压 最小 (V)</label>{{ form.voltage_min(class="form-control form-control-sm", placeholder="V") }}</div>
+                <div><label class="form-label text-xs">电压 最大 (V)</label>{{ form.voltage_max(class="form-control form-control-sm", placeholder="V") }}</div>
+            </div>
+            <div style="margin-bottom:0.75rem;"><label class="form-label text-sm">{{ form.keyword.label.text }}</label>{{ form.keyword(class="form-control form-control-sm", placeholder="实验名称/备注") }}</div>
+            {{ form.submit(class="btn btn-primary", style="width:100%;") }}
+            <a href="{{ url_for('reaction_search') }}" class="btn btn-ghost" style="width:100%;margin-top:0.25rem;"><i class="bi bi-x-circle"></i> 重置</a>
+        </form>
+    </div></div>
+    <div class="card"><div class="card-header" style="justify-content:space-between;">
+        <span><i class="bi bi-list-ul"></i> 检索结果</span>
+        <span class="text-dim text-xs">{{ results|length }} 条匹配</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:22%">实验名称</th>
+                    <th style="width:8%">相似度</th>
+                    <th style="width:20%">反应物 → 产物</th>
+                    <th style="width:10%">工作电极</th>
+                    <th style="width:7%">电压</th>
+                    <th style="width:8%">溶剂</th>
+                    <th style="width:6%">温度</th>
+                    <th style="width:6%">pH</th>
+                    <th style="width:13%">来源</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if results %}
+                {% for exp, score in results %}
+                <tr>
+                    <td><a href="{{ url_for('experiment_detail', experiment_id=exp.id) }}" style="font-weight:500;font-size:0.8rem;">{{ exp.name[:35] }}{% if exp.name|length > 35 %}...{% endif %}</a></td>
+                    <td>
+                        <span class="badge {% if score >= 0.7 %}badge-success{% elif score >= 0.5 %}badge-warning{% else %}badge-gray{% endif %}">{{ '%.0f'|format(score*100) }}%</span>
+                    </td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:0.25rem;font-size:0.72rem;font-family:var(--font-mono);">
+                            {% if exp.substrate_smiles %}<span title="{{ exp.substrate_smiles }}">{{ exp.substrate_smiles[:18] }}{% if exp.substrate_smiles|length > 18 %}...{% endif %}</span>{% endif %}
+                            {% if exp.substrate_smiles and exp.product_smiles %}<span class="text-dim" style="font-size:0.6rem;"><i class="bi bi-arrow-right"></i></span>{% endif %}
+                            {% if exp.product_smiles %}<span title="{{ exp.product_smiles }}">{{ exp.product_smiles[:18] }}{% if exp.product_smiles|length > 18 %}...{% endif %}</span>{% endif %}
+                            {% if not exp.substrate_smiles and not exp.product_smiles %}<span class="text-dim">-</span>{% endif %}
+                        </div>
+                    </td>
+                    <td>{% for e in exp.electrodes %}{% if e.electrode_type == 'WE' %}<span class="badge badge-info" style="font-size:0.65rem;">{{ e.material[:12] }}</span>{% endif %}{% else %}<span class="text-dim text-xs">-</span>{% endfor %}</td>
+                    <td class="text-sm">{{ exp.potential if exp.potential is not none else '-' }}</td>
+                    <td class="text-sm">{% for e in exp.electrolytes %}{{ e.solvent[:10] }}{% else %}-{% endfor %}</td>
+                    <td class="text-sm">{{ exp.temperature if exp.temperature is not none else '-' }}</td>
+                    <td class="text-sm">{{ exp.ph if exp.ph is not none else '-' }}</td>
+                    <td class="text-xs">
+                        {% if exp.reference_type == 'literature' and exp.doi %}
+                            <span class="text-dim"><i class="bi bi-bookmark"></i> {{ exp.doi[:15] }}</span>
+                        {% elif exp.reference_type == 'patent' and exp.patent_number %}
+                            <span class="text-dim"><i class="bi bi-file-earmark-text"></i> {{ exp.patent_number[:12] }}</span>
+                        {% else %}<span class="text-dim">内部</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr><td colspan="9" style="text-align:center;padding:3rem 1rem;color:var(--text-dim);">
+                    <i class="bi bi-search" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                    输入反应物/产物的结构式，或筛选条件进行检索
+                    <div class="text-xs" style="margin-top:0.75rem;color:var(--text-dim);">
+                        <i class="bi bi-lightbulb"></i> 使用分子编辑器绘制，或直接输入 SMILES<br>
+                        示例: <code>C=C</code> (乙烯) → <code>CCO</code> (乙醇)
+                    </div>
+                </td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+['reactant_smiles', 'product_smiles'].forEach(function(id) {
+    var input = document.getElementById(id);
+    if (input) {
+        input.addEventListener('change', function() { updatePreview(this.value, id + '_preview'); });
+        if (input.value) updatePreview(input.value, id + '_preview');
+    }
+});
+</script>
+{% endblock %}
