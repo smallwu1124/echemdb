@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+{% block title %}{{ experiment.name }} - 电化学数据库{% endblock %}
+{% block page_title %}{{ experiment.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <a href="{{ url_for('experiment_list') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回列表</a>
+    </div>
+    <div class="btn-group btn-group-sm">
+        <a href="{{ url_for('experiment_edit', experiment_id=experiment.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> 编辑</a>
+        <a href="{{ url_for('analysis_create', experiment_id=experiment.id) }}" class="btn btn-outline-success"><i class="bi bi-bar-chart"></i> 添加分析</a>
+        <form method="POST" action="{{ url_for('experiment_delete', experiment_id=experiment.id) }}" style="display:inline" onsubmit="return confirm('确定删除此实验？所有关联分析数据也会被标记。')">
+            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash"></i> 删除</button>
+        </form>
+    </div>
+</div>
+
+<!-- Structure Card -->
+{% if experiment.smiles %}
+<div class="col-md-6">
+    <div class="card">
+        <div class="card-header"><i class="bi bi-bezier2"></i> 分子结构式</div>
+        <div class="card-body text-center">
+            <div id="mol_structure_container" style="min-height:140px;">
+                <canvas id="mol_structure_canvas" width="200" height="160" style="border:1px solid #eee;border-radius:4px;"></canvas>
+                <div class="small text-muted mt-2">
+                    <code>{{ experiment.smiles }}</code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if experiment.substrate_smiles or experiment.product_smiles %}
+<div class="col-md-6">
+    <div class="card">
+        <div class="card-header"><i class="bi bi-bezier2"></i> 原料 / 产物 结构式</div>
+        <div class="card-body">
+            <div class="row text-center">
+                {% if experiment.substrate_smiles %}
+                <div class="col-6">
+                    <strong class="small text-muted">原料</strong>
+                    <canvas id="substrate_canvas" width="180" height="120" style="border:1px solid #eee;border-radius:4px;"></canvas>
+                    <div class="small text-muted mt-1"><code>{{ experiment.substrate_smiles[:30] }}</code></div>
+                </div>
+                {% endif %}
+                {% if experiment.product_smiles %}
+                <div class="col-6">
+                    <strong class="small text-muted">产物</strong>
+                    <canvas id="product_canvas" width="180" height="120" style="border:1px solid #eee;border-radius:4px;"></canvas>
+                    <div class="small text-muted mt-1"><code>{{ experiment.product_smiles[:30] }}</code></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if experiment.reference_type and experiment.reference_type != "" and experiment.reference_type != "none" %}
+<div class="col-md-6">
+    <div class="card">
+        <div class="card-header"><i class="bi bi-bookmark"></i> 参考来源</div>
+        <div class="card-body">
+            <table class="table table-sm mb-0">
+                <tr><td style="width:30%" class="text-muted">类型</td>
+                    <td>{% if experiment.reference_type == "literature" %}<span class="badge bg-info">文献</span>
+                        {% elif experiment.reference_type == "patent" %}<span class="badge bg-warning">专利</span>
+                        {% else %}<span class="badge bg-secondary">内部</span>{% endif %}</td></tr>
+                {% if experiment.reference_type == "literature" and experiment.doi %}
+                <tr><td class="text-muted">DOI</td><td><code>{{ experiment.doi }}</code></td></tr>{% endif %}
+                {% if experiment.reference_type == "patent" and experiment.patent_number %}
+                <tr><td class="text-muted">专利号</td><td><code>{{ experiment.patent_number }}</code></td></tr>{% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Info Cards -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-info-circle"></i> 基本信息</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td style="width:30%" class="text-muted">实验编号</td><td>{{ experiment.id }}</td></tr>
+                    <tr><td class="text-muted">批次号</td><td>{{ experiment.batch_id or '-' }}</td></tr>
+                    <tr><td class="text-muted">日期时间</td><td>{{ experiment.date_time.strftime('%Y-%m-%d %H:%M') if experiment.date_time else '-' }}</td></tr>
+                    <tr><td class="text-muted">操作人员</td><td>{{ experiment.operator_name or '-' }}</td></tr>
+                    <tr><td class="text-muted">仪器型号</td><td>{{ experiment.equipment_model or '-' }}</td></tr>
+                    <tr><td class="text-muted">版本</td><td>v{{ experiment.version }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-lightning"></i> 电化学参数</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td style="width:30%" class="text-muted">模式</td><td><span class="badge-mode">{{ experiment.electro_mode }}</span></td></tr>
+                    <tr><td class="text-muted">电流</td><td>{{ experiment.current|string + ' A' if experiment.current else '-' }}</td></tr>
+                    <tr><td class="text-muted">电位</td><td>{{ experiment.potential|string + ' V' if experiment.potential else '-' }}</td></tr>
+                    <tr><td class="text-muted">扫描速率</td><td>{{ experiment.scan_rate|string + ' mV/s' if experiment.scan_rate else '-' }}</td></tr>
+                    <tr><td class="text-muted">总电荷量</td><td>{{ experiment.total_charge|string + ' C' if experiment.total_charge else '-' }}</td></tr>
+                    <tr><td class="text-muted">实验时间</td><td>{{ experiment.duration if experiment.duration else '-' }} {{ experiment.duration_unit or '' }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-motherboard"></i> 电极参数</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <td style="width:30%" class="text-muted">工作电极 (WE)</td>
+                        <td>
+                            {% if we_electrode %}
+                                <strong>{{ we_electrode.material }}</strong>
+                                {% if we_electrode.area %} ({{ we_electrode.area }} cm²){% endif %}
+                                {% if we_electrode.geometry %} - {{ we_electrode.geometry }}{% endif %}
+                            {% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    <tr><td class="text-muted">WE预处理</td><td>{{ we_electrode.pretreatment if we_electrode and we_electrode.pretreatment else '-' }}</td></tr>
+                    <tr>
+                        <td class="text-muted">参比电极 (RE)</td>
+                        <td>{{ re_electrode.material if re_electrode else '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">对电极 (CE)</td>
+                        <td>{{ ce_electrode.material if ce_electrode else '-' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-droplet"></i> 溶液与反应条件</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td style="width:30%" class="text-muted">溶剂</td><td>{% for e in experiment.electrolytes %}{{ e.solvent }}{% else %}-{% endfor %}</td></tr>
+                    <tr><td class="text-muted">支持电解质</td><td>{% for e in experiment.electrolytes %}{{ e.supporting_salt or '-' }} ({{ e.concentration or '-' }} M){% else %}-{% endfor %}</td></tr>
+                    <tr><td class="text-muted">底物</td><td>{% for s in experiment.samples %}{{ s.name }} ({{ s.concentration or '-' }} M) {% else %}-{% endfor %}</td></tr>
+                    <tr><td class="text-muted">pH</td><td>{{ experiment.ph if experiment.ph is not none else '-' }}</td></tr>
+                    <tr><td class="text-muted">温度</td><td>{{ experiment.temperature|string + ' ℃' if experiment.temperature else '-' }}</td></tr>
+                    <tr><td class="text-muted">搅拌速率</td><td>{{ experiment.stirring_rpm|string + ' rpm' if experiment.stirring_rpm else '-' }}</td></tr>
+                    <tr><td class="text-muted">气氛</td><td>{{ experiment.atmosphere or '-' }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-box"></i> 反应器与光照</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td style="width:30%" class="text-muted">反应器类型</td><td>{{ experiment.cell_type or '-' }}</td></tr>
+                    <tr><td class="text-muted">反应器体积</td><td>{{ experiment.cell_volume|string + ' mL' if experiment.cell_volume else '-' }}</td></tr>
+                    <tr><td class="text-muted">隔膜</td><td>{{ experiment.separator or '-' }}</td></tr>
+                    <tr><td class="text-muted">加料方式</td><td>{{ experiment.feed_mode or '-' }} {{ '(' + experiment.feed_rate|string + ' mL/min)' if experiment.feed_rate else '' }}</td></tr>
+                    <tr><td class="text-muted">光源</td><td>{{ experiment.light_source or '-' }}</td></tr>
+                    <tr><td class="text-muted">光照强度</td><td>{{ experiment.light_intensity|string + ' mW/cm²' if experiment.light_intensity else '-' }}</td></tr>
+                    <tr><td class="text-muted">光照时间</td><td>{{ experiment.light_duration|string + ' s' if experiment.light_duration else '-' }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-graph-up"></i> 测量与分析</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td style="width:30%" class="text-muted">测量方法</td><td>{{ experiment.measurement_method or '-' }}</td></tr>
+                    <tr><td class="text-muted">采样频率</td><td>{{ experiment.sampling_rate|string + ' Hz' if experiment.sampling_rate else '-' }}</td></tr>
+                    <tr><td class="text-muted">分析方法</td><td>{{ experiment.analysis_method or '-' }}</td></tr>
+                    <tr><td class="text-muted">不确定度</td><td>{{ experiment.uncertainty|string + '%' if experiment.uncertainty else '-' }}</td></tr>
+                    <tr><td class="text-muted">安全信息</td><td>{{ experiment.safety_info or '-' }}</td></tr>
+                    <tr><td class="text-muted">废弃物</td><td>{{ experiment.waste_category or '-' }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if experiment.notes %}
+<div class="card mt-3">
+    <div class="card-header"><i class="bi bi-chat-dots"></i> 备注</div>
+    <div class="card-body">
+        <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ experiment.notes }}</pre>
+    </div>
+</div>
+{% endif %}
+
+<!-- Analysis Results -->
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bar-chart"></i> 分析结果</span>
+        <a href="{{ url_for('analysis_create', experiment_id=experiment.id) }}" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> 添加分析</a>
+    </div>
+    <div class="card-body p-0">
+        {% if analyses %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>时间</th>
+                        <th>产率 (%)</th>
+                        <th>选择性 (%)</th>
+                        <th>法拉第效率 (%)</th>
+                        <th>重复次数</th>
+                        <th>RSD (%)</th>
+                        <th>备注</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in analyses %}
+                    <tr>
+                        <td class="small">{{ a.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ a.yield_pct if a.yield_pct else '-' }}</td>
+                        <td>{{ a.selectivity if a.selectivity else '-' }}</td>
+                        <td>{{ a.faraday_efficiency if a.faraday_efficiency else '-' }}</td>
+                        <td>{{ a.num_replicates or 1 }}</td>
+                        <td>{{ a.reproducibility_rsd|round(1) if a.reproducibility_rsd else '-' }}</td>
+                        <td><small>{{ a.notes[:50] + '...' if a.notes and a.notes|length > 50 else a.notes or '' }}</small></td>
+                        <td>
+                            <a href="{{ url_for('analysis_edit', analysis_id=a.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-bar-chart" style="font-size: 2rem;"></i>
+            <p class="mt-2">暂无分析结果</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+{% if experiment.substrate_smiles or experiment.product_smiles or experiment.smiles %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var tryDraw = function(canvasId, smiles) {
+        if (!smiles) return;
+        var canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        if (typeof SmilesDrawer !== 'undefined') {
+            try {
+                var drawer = new SmilesDrawer.Drawer({width: 180, height: 120});
+                SmilesDrawer.parse(smiles, function(tree) {
+                    drawer.draw(tree, canvasId, 'light', false);
+                });
+            } catch(e) {
+                canvas.parentNode.innerHTML += '<img src="/struct-img/' + encodeURIComponent(smiles) + '/PNG" style="max-width:180px;max-height:120px;">';
+            }
+        }
+    };
+    tryDraw('substrate_canvas', {{ experiment.substrate_smiles|tojson }});
+    tryDraw('product_canvas', {{ experiment.product_smiles|tojson }});
+});
+</script>
+{% endif %}
+{% if experiment.smiles %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var smi = {{ experiment.smiles|tojson }};
+    if (smi && typeof SmilesDrawer !== 'undefined') {
+        try {
+            var drawer = new SmilesDrawer.Drawer({width: 200, height: 160});
+            SmilesDrawer.parse(smi, function(tree) {
+                drawer.draw(tree, 'mol_structure_canvas', 'light', false);
+            });
+        } catch(e) {
+            // Fallback to image
+            var img = document.createElement('img');
+            img.src = '/struct-img/' + encodeURIComponent(smi) + '/PNG';
+            img.style.maxWidth = '200px';
+            img.style.maxHeight = '160px';
+            document.getElementById('mol_structure_container').innerHTML = '';
+            document.getElementById('mol_structure_container').appendChild(img);
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}
