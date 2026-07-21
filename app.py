@@ -1776,6 +1776,19 @@ def struct_img(smiles):
         pass
     svg = '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="100"><text x="10" y="55" font-family="monospace" font-size="11" fill="#888">' + smiles[:50] + '</text></svg>'
     return Response(svg, mimetype='image/svg+xml')
+@app.route('/db-check')
+def db_check():
+    try:
+        from sqlalchemy import inspect
+        insp = inspect(db.engine)
+        users = User.query.count()
+        exps = Experiment.query.filter_by(is_active=True).count()
+        lit = Literature.query.count()
+        return dict(status="ok", tables=insp.get_table_names(), users=users, experiments=exps, literature=lit)
+    except Exception as e:
+        return dict(status="error", message=str(e))
+
+
 @app.route('/health')
 def health():
     """Health check endpoint for monitoring."""
@@ -1802,7 +1815,11 @@ def server_error(e):
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as e:
+            import sys
+            print("DB init:", e, file=sys.stderr)
     import argparse
     import os
     parser = argparse.ArgumentParser(description="EChemDB - Electrochemical Database Platform")
