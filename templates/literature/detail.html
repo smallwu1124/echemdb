@@ -1,0 +1,97 @@
+﻿{% extends "base.html" %}
+{% block title %}{{ lit.title[:50] }} - EChemDB{% endblock %}
+{% block page_title %}<i class="bi bi-book"></i> {{ lit.title[:60] }}{% if lit.title|length > 60 %}...{% endif %}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <a href="{{ url_for('literature_list') }}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> 返回列表</a>
+    <div class="btn-group">
+        <a href="{{ url_for('literature_edit', lit_id=lit.id) }}" class="btn btn-outline btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
+        <form method="POST" action="{{ url_for('literature_delete', lit_id=lit.id) }}" style="display:inline" onsubmit="return confirm('确定删除此文献？')">
+            <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red);"><i class="bi bi-trash"></i> 删除</button>
+        </form>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;">
+    <div>
+        <div class="card"><div class="card-header"><i class="bi bi-info-circle"></i> 文献详情</div><div class="card-body" style="padding:0;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                {% for row in [
+                    ('标题', lit.title, True),
+                    ('作者', lit.authors or '-', False),
+                    ('期刊', lit.journal or '-', False),
+                    ('年份 / 卷期', (lit.year|string if lit.year else '-') + (' Vol.' + lit.volume if lit.volume else '') + ('(' + lit.issue + ')' if lit.issue else '') + (', ' + lit.pages if lit.pages else ''), False),
+                    ('类型', '', False),
+                    ('研究领域', lit.research_field or '-', False),
+                    ('反应类型', lit.reaction_type or '-', False),
+                ] %}
+                <div style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);{% if loop.index % 2 == 0 %}background:rgba(255,255,255,0.015);{% endif %}">
+                    <div class="text-dim text-xs" style="margin-bottom:0.15rem;">{{ row[0] }}</div>
+                    <div style="font-size:0.82rem;{% if row[2] %}font-weight:600;{% endif %}">
+                        {% if row[0] == '类型' %}
+                            {% if lit.literature_type == 'journal' %}<span class="badge badge-info">期刊</span>
+                            {% elif lit.literature_type == 'patent' %}<span class="badge badge-warning">专利</span>
+                            {% elif lit.literature_type == 'review' %}<span class="badge badge-success">综述</span>
+                            {% else %}<span class="badge badge-gray">{{ lit.literature_type }}</span>{% endif %}
+                        {% else %}{{ row[1] }}{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div></div>
+        {% if lit.abstract %}
+        <div class="card"><div class="card-header"><i class="bi bi-card-text"></i> 摘要</div><div class="card-body"><p class="text-sm" style="line-height:1.7;color:var(--text-secondary);">{{ lit.abstract }}</p></div></div>
+        {% endif %}
+        {% if lit.keywords %}
+        <div class="card"><div class="card-header"><i class="bi bi-tags"></i> 关键词</div><div class="card-body" style="display:flex;flex-wrap:wrap;gap:0.3rem;">
+            {% for kw in lit.keywords.split(',') %}
+            <span class="badge badge-gray">{{ kw.strip() }}</span>
+            {% endfor %}
+        </div></div>
+        {% endif %}
+        {% if lit.notes %}
+        <div class="card"><div class="card-header"><i class="bi bi-journal-text"></i> 备注</div><div class="card-body"><p class="text-sm" style="color:var(--text-secondary);">{{ lit.notes }}</p></div></div>
+        {% endif %}
+    </div>
+    <div>
+        <div class="card"><div class="card-header"><i class="bi bi-link-45deg"></i> 标识</div><div class="card-body" style="padding:0;">
+            {% for row in [
+                ('DOI', lit.doi),
+                ('专利号', lit.patent_number),
+                ('URL', lit.url),
+            ] %}
+            <div style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);">
+                <div class="text-dim text-xs" style="margin-bottom:0.15rem;">{{ row[0] }}</div>
+                <div class="text-sm">
+                    {% if row[1] %}
+                        {% if row[0] == 'URL' %}<a href="{{ row[1] }}" target="_blank" rel="noopener">{{ row[1][:40] }} <i class="bi bi-box-arrow-up-right text-xs"></i></a>
+                        {% else %}<code>{{ row[1] }}</code>{% endif %}
+                    {% else %}<span class="text-dim">-</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div></div>
+        <div class="card"><div class="card-header"><i class="bi bi-flask"></i> 关联实验</div><div class="card-body">
+            {% if lit.experiments %}
+            <ul style="list-style:none;padding:0;margin:0;">
+                {% for exp in lit.experiments %}
+                <li style="padding:0.4rem 0;border-bottom:1px solid var(--border);"><a href="{{ url_for('experiment_detail', experiment_id=exp.id) }}" style="font-size:0.82rem;">{{ exp.name }}</a><br><span class="text-dim text-xs">{{ exp.electro_mode }} | {{ exp.date_time.strftime('%Y-%m-%d') if exp.date_time else '' }}</span></li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-dim text-sm" style="text-align:center;padding:0.75rem 0;margin:0;"><i class="bi bi-link-45deg"></i> 暂无关联实验</p>
+            {% endif %}
+        </div></div>
+        <div class="card"><div class="card-header"><i class="bi bi-clock"></i> 时间</div><div class="card-body" style="padding:0;">
+            <div style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);">
+                <div class="text-dim text-xs">创建</div>
+                <div class="text-sm">{{ lit.created_at.strftime('%Y-%m-%d %H:%M') if lit.created_at else '-' }}</div>
+            </div>
+            <div style="padding:0.6rem 1rem;">
+                <div class="text-dim text-xs">更新</div>
+                <div class="text-sm">{{ lit.updated_at.strftime('%Y-%m-%d %H:%M') if lit.updated_at else '-' }}</div>
+            </div>
+        </div></div>
+    </div>
+</div>
+{% endblock %}
