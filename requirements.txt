@@ -1,0 +1,10 @@
+flask>=3.0
+flask-sqlalchemy>=3.0
+flask-login>=0.6
+flask-wtf>=1.2
+wtforms>=3.1
+email-validator>=2.0
+pandas>=2.0
+openpyxl>=3.1
+plotly>=5.0
+pypdf>=4.0
