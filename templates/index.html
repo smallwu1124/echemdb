@@ -1,0 +1,108 @@
+﻿{% extends "base.html" %}
+{% block title %}仪表板 - EChemDB{% endblock %}
+{% block page_title %}<i class="bi bi-grid"></i> 仪表板{% endblock %}
+{% block content %}
+<div class="stat-row">
+    <div class="stat-card">
+        <div class="stat-icon" style="background:var(--accent-subtle);color:var(--accent);"><i class="bi bi-flask"></i></div>
+        <div><div class="stat-number">{{ total_experiments }}</div><div class="stat-label">实验总数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:var(--green-subtle);color:var(--green);"><i class="bi bi-motherboard"></i></div>
+        <div><div class="stat-number">{{ total_electrodes }}</div><div class="stat-label">电极记录</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:var(--gold-subtle);color:var(--gold);"><i class="bi bi-droplet"></i></div>
+        <div><div class="stat-number">{{ total_electrolytes }}</div><div class="stat-label">电解质记录</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(94,106,210,0.1);color:var(--accent);"><i class="bi bi-book"></i></div>
+        <div><div class="stat-number">{{ total_literature }}</div><div class="stat-label">文献 / 专利</div></div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+    <div class="card"><div class="card-header" style="justify-content:space-between;">
+        <span><i class="bi bi-clock-history"></i> 最近实验</span>
+        <a href="{{ url_for('experiment_list') }}" class="btn btn-ghost btn-sm">查看全部</a>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th style="width:40%">实验名称</th><th style="width:25%">模式</th><th style="width:35%">时间</th></tr></thead>
+            <tbody>
+            {% for exp in recent %}
+            <tr>
+                <td><a href="{{ url_for('experiment_detail', experiment_id=exp.id) }}" style="font-weight:500;">{{ exp.name }}</a></td>
+                <td><span class="badge badge-info">{{ exp.electro_mode }}</span></td>
+                <td class="text-dim text-sm">{{ exp.date_time.strftime('%Y-%m-%d %H:%M') if exp.date_time else '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center py-4" style="color:var(--text-dim);"><i class="bi bi-inbox" style="font-size:1.3rem;display:block;margin-bottom:0.3rem;"></i>暂无实验记录</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+
+    <div class="card"><div class="card-header"><i class="bi bi-pie-chart"></i> 电化学模式分布</div>
+        <div class="card-body"><canvas id="modeChart" height="180"></canvas></div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
+    <div class="card"><div class="card-header"><i class="bi bi-bar-chart"></i> 常用工作电极 TOP 10</div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>材料</th><th>次数</th><th style="width:55%">占比</th></tr></thead>
+                <tbody>
+                {% set total_we = we_materials|sum(attribute='1') %}
+                {% for mat, cnt in we_materials %}
+                <tr>
+                    <td><span class="badge badge-gray" style="font-size:0.72rem;">{{ mat }}</span></td>
+                    <td>{{ cnt }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+                                <div style="height:100%;background:var(--accent);border-radius:2px;width:{{ (cnt / total_we * 100)|round(1) if total_we > 0 else 0 }}%;"></div>
+                            </div>
+                            <span class="text-dim text-xs">{{ (cnt / total_we * 100)|round(1) if total_we > 0 else 0 }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center py-3" style="color:var(--text-dim);">暂无数据</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card"><div class="card-header"><i class="bi bi-lightning"></i> 快捷操作</div>
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+                <a href="{{ url_for('experiment_create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> 新建实验</a>
+                <a href="{{ url_for('statistics') }}" class="btn btn-outline"><i class="bi bi-bar-chart"></i> 统计分析</a>
+                <a href="{{ url_for('import_data') }}" class="btn btn-outline"><i class="bi bi-upload"></i> 导入数据</a>
+                <a href="{{ url_for('export_template') }}" class="btn btn-outline"><i class="bi bi-download"></i> 下载模板</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+new Chart(document.getElementById('modeChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+        labels: {{ mode_counts|map(attribute='0')|list|tojson }},
+        datasets: [{
+            data: {{ mode_counts|map(attribute='1')|list|tojson }},
+            backgroundColor: ['#5e6ad2','#7c3aed','#22c55e','#eab308','#ef4444','#06b6d4']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { color: '#a1a1aa', font: { size: 10 } } } },
+        cutout: '60%'
+    }
+});
+</script>
+{% endblock %}
