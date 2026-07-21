@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}统计与可视化 - 电化学数据库{% endblock %}
+{% block page_title %}统计与可视化分析{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card d-flex align-items-center gap-3">
+            <div class="stat-icon" style="background: #e8eaf6; color: #1a237e;">
+                <i class="bi bi-flask"></i>
+            </div>
+            <div>
+                <div class="stat-number">{{ total_exp }}</div>
+                <div class="stat-label">实验总数</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card d-flex align-items-center gap-3">
+            <div class="stat-icon" style="background: #e0f2f1; color: #00695c;">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div>
+                <div class="stat-number">{{ with_analysis }}</div>
+                <div class="stat-label">已分析实验</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card d-flex align-items-center gap-3">
+            <div class="stat-icon" style="background: #fff3e0; color: #e65100;">
+                <i class="bi bi-percent"></i>
+            </div>
+            <div>
+                <div class="stat-number">{{ "%.0f"|format(with_analysis / total_exp * 100) if total_exp > 0 else 0 }}%</div>
+                <div class="stat-label">分析覆盖率</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Charts Row 1 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-pie-chart"></i> 电化学模式分布</div>
+            <div class="card-body">
+                <canvas id="modeChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-bar-chart"></i> 不同电极材料平均产率</div>
+            <div class="card-body">
+                <canvas id="yieldWeChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row 2 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-scatter"></i> 温度 vs 产率</div>
+            <div class="card-body">
+                <canvas id="tempYieldChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-scatter"></i> pH vs 法拉第效率</div>
+            <div class="card-body">
+                <canvas id="pHFeChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 3 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-bar-chart"></i> 不同电解质平均法拉第效率</div>
+            <div class="card-body">
+                <canvas id="feElecChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-graph-up"></i> 实验数量趋势</div>
+            <div class="card-body">
+                <canvas id="expTrendChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Tables -->
+<div class="card mt-3">
+    <div class="card-header"><i class="bi bi-table"></i> 按电极材料的平均产率</div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>工作电极材料</th>
+                    <th>平均产率 (%)</th>
+                    <th>实验次数</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mat, avg, cnt in yield_by_we %}
+                <tr>
+                    <td><span class="badge bg-light text-dark">{{ mat }}</span></td>
+                    <td>{{ "%.1f"|format(avg) }}</td>
+                    <td>{{ cnt }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center text-muted py-3">暂无数据</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header"><i class="bi bi-table"></i> 按电解质的平均法拉第效率</div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>支持电解质</th>
+                    <th>平均法拉第效率 (%)</th>
+                    <th>实验次数</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for salt, avg, cnt in fe_by_electrolyte %}
+                <tr>
+                    <td>{{ salt or '-' }}</td>
+                    <td>{{ "%.1f"|format(avg) }}</td>
+                    <td>{{ cnt }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center text-muted py-3">暂无数据</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const cd = {{ chart_data|safe }};
+
+// Mode Distribution (Doughnut)
+if (document.getElementById('modeChart')) {
+    new Chart(document.getElementById('modeChart'), {
+        type: 'doughnut',
+        data: {
+            labels: cd.mode_labels,
+            datasets: [{
+                data: cd.mode_values,
+                backgroundColor: ['#1a237e','#283593','#3949ab','#5c6bc0','#7986cb','#9fa8da']
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+    });
+}
+
+// Yield by WE Material (Bar)
+if (document.getElementById('yieldWeChart') && cd.we_yield_labels.length) {
+    new Chart(document.getElementById('yieldWeChart'), {
+        type: 'bar',
+        data: {
+            labels: cd.we_yield_labels,
+            datasets: [{
+                label: '平均产率 (%)',
+                data: cd.we_yield_values,
+                backgroundColor: '#3949ab',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, max: 100 } }
+        }
+    });
+}
+
+// Temperature vs Yield (Scatter)
+if (document.getElementById('tempYieldChart') && cd.temp_yield.length) {
+    new Chart(document.getElementById('tempYieldChart'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: '实验数据',
+                data: cd.temp_yield,
+                backgroundColor: '#5c6bc0',
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { title: { display: true, text: '温度 (℃)' } },
+                y: { title: { display: true, text: '产率 (%)' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+// pH vs FE (Scatter)
+if (document.getElementById('pHFeChart') && cd.ph_fe.length) {
+    new Chart(document.getElementById('pHFeChart'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: '实验数据',
+                data: cd.ph_fe,
+                backgroundColor: '#e65100',
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { title: { display: true, text: 'pH' } },
+                y: { title: { display: true, text: '法拉第效率 (%)' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+// FE by Electrolyte (Bar)
+if (document.getElementById('feElecChart') && cd.fe_elec_labels.length) {
+    new Chart(document.getElementById('feElecChart'), {
+        type: 'bar',
+        data: {
+            labels: cd.fe_elec_labels,
+            datasets: [{
+                label: '平均法拉第效率 (%)',
+                data: cd.fe_elec_values,
+                backgroundColor: '#00695c',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, max: 100 } }
+        }
+    });
+}
+
+// Experiment Trend (Line)
+if (document.getElementById('expTrendChart') && cd.dates.length) {
+    new Chart(document.getElementById('expTrendChart'), {
+        type: 'line',
+        data: {
+            labels: cd.dates,
+            datasets: [{
+                label: '实验数',
+                data: cd.exp_counts,
+                borderColor: '#1a237e',
+                backgroundColor: 'rgba(26,35,126,0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { title: { display: true, text: '日期' } },
+                y: { title: { display: true, text: '数量' }, beginAtZero: true }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
