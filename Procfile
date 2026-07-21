@@ -1,1 +1,1 @@
-﻿web: python app.py --port=\ --host=0.0.0.0
+web: python app.py --port=$PORT --host=0.0.0.0
