@@ -1,0 +1,97 @@
+﻿{% extends "base.html" %}
+{% block title %}文献管理 - EChemDB{% endblock %}
+{% block page_title %}<i class="bi bi-book"></i> 文献 / 专利管理{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+    <form method="GET" style="display:flex;gap:0.4rem;align-items:end;flex-wrap:wrap;">
+        <div>
+            <label class="form-label">类型</label>
+            <select name="type" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                <option value="">全部</option>
+                <option value="journal" {% if request.args.get('type') == 'journal' %}selected{% endif %}>期刊</option>
+                <option value="patent" {% if request.args.get('type') == 'patent' %}selected{% endif %}>专利</option>
+                <option value="review" {% if request.args.get('type') == 'review' %}selected{% endif %}>综述</option>
+                <option value="conference" {% if request.args.get('type') == 'conference' %}selected{% endif %}>会议</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label">关键词</label>
+            <input type="text" name="keyword" class="form-control form-control-sm" placeholder="标题/作者/关键词" value="{{ request.args.get('keyword', '') }}" style="width:160px;">
+        </div>
+        <div>
+            <label class="form-label">年份</label>
+            <input type="number" name="year_from" class="form-control form-control-sm" placeholder="起" value="{{ request.args.get('year_from', '') }}" style="width:70px;">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="margin-bottom:1px;"><i class="bi bi-search"></i></button>
+        <a href="{{ url_for('literature_list') }}" class="btn btn-ghost btn-sm" style="margin-bottom:1px;"><i class="bi bi-x-circle"></i></a>
+    </form>
+    <a href="{{ url_for('literature_create') }}" class="btn btn-success btn-sm"><i class="bi bi-plus-lg"></i> 添加文献</a>
+</div>
+
+<div class="card">
+    <div class="card-header" style="justify-content:space-between;">
+        <span><i class="bi bi-list-ul"></i> 文献列表</span>
+        <span class="text-dim text-xs">{{ literatures.total }} 条</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:32%">标题</th>
+                    <th style="width:18%">作者</th>
+                    <th style="width:15%">来源</th>
+                    <th style="width:6%">年份</th>
+                    <th style="width:6%">类型</th>
+                    <th style="width:12%">DOI/专利号</th>
+                    <th style="width:11%">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lit in literatures.items %}
+                <tr>
+                    <td><a href="{{ url_for('literature_detail', lit_id=lit.id) }}" style="font-weight:500;">{{ lit.title[:80] }}{% if lit.title|length > 80 %}...{% endif %}</a></td>
+                    <td><span class="text-dim text-sm">{{ lit.authors[:40] if lit.authors else '-' }}{% if lit.authors and lit.authors|length > 40 %}...{% endif %}</span></td>
+                    <td><span class="text-dim text-sm">{{ lit.journal[:30] if lit.journal else '-' }}</span></td>
+                    <td><span class="text-sm">{{ lit.year if lit.year else '-' }}</span></td>
+                    <td>
+                        {% if lit.literature_type == 'journal' %}<span class="badge badge-info">期刊</span>
+                        {% elif lit.literature_type == 'patent' %}<span class="badge badge-warning">专利</span>
+                        {% elif lit.literature_type == 'review' %}<span class="badge badge-success">综述</span>
+                        {% else %}<span class="badge badge-gray">{{ lit.literature_type }}</span>{% endif %}
+                    </td>
+                    <td><code class="text-xs">{{ lit.doi[:30] if lit.doi else lit.patent_number[:25] if lit.patent_number else '-' }}</code></td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('literature_detail', lit_id=lit.id) }}" class="btn btn-ghost btn-sm" title="查看"><i class="bi bi-eye"></i></a>
+                            <a href="{{ url_for('literature_edit', lit_id=lit.id) }}" class="btn btn-ghost btn-sm" title="编辑"><i class="bi bi-pencil"></i></a>
+                            <form method="POST" action="{{ url_for('literature_delete', lit_id=lit.id) }}" style="display:inline" onsubmit="return confirm('确定删除此文献？')">
+                                <button type="submit" class="btn btn-ghost btn-sm" title="删除" style="color:var(--red);"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center py-5" style="color:var(--text-dim);">
+                    <i class="bi bi-inbox" style="font-size:1.8rem;display:block;margin-bottom:0.5rem;"></i>
+                    暂无文献记录
+                    <div style="margin-top:0.75rem;"><a href="{{ url_for('literature_create') }}" class="btn btn-primary btn-sm">添加第一篇文献</a></div>
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if literatures.pages > 1 %}
+    <div class="card-footer">
+        <ul class="pagination">
+            {% for p in literatures.iter_pages() %}
+                {% if p %}
+                <li class="page-item {% if p == literatures.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('literature_list', page=p, type=request.args.get('type',''), keyword=request.args.get('keyword',''), year_from=request.args.get('year_from','')) }}">{{ p }}</a>
+                </li>
+                {% else %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
