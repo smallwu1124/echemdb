@@ -1,0 +1,141 @@
+﻿{% extends "base.html" %}
+{% block title %}{% if edit %}编辑实验{% else %}新建实验{% endif %} - 电化学数据库{% endblock %}
+{% block page_title %}{% if edit %}编辑实验 #{{ experiment.id }}{% else %}新建实验{% endif %}{% endblock %}
+{% block content %}
+<form method="POST" class="needs-validation" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="row g-3">
+        <div class="col-lg-6"><div class="card"><div class="card-header"><i class="bi bi-info-circle"></i> 基本信息</div><div class="card-body">
+            <div class="mb-3"><label class="form-label">{{ form.name.label.text }} <span class="text-danger">*</span></label>{{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}</div>
+            <div class="row g-2"><div class="col-7"><label class="form-label">{{ form.date_time.label.text }} <span class="text-danger">*</span></label>{{ form.date_time(class="form-control", type="datetime-local") }}</div><div class="col-5"><label class="form-label">{{ form.batch_id.label.text }}</label>{{ form.batch_id(class="form-control") }}</div></div>
+        </div></div></div>
+        <div class="col-lg-6"><div class="card"><div class="card-header"><i class="bi bi-bezier2"></i> 结构式</div><div class="card-body text-center">
+            <button type="button" class="btn btn-primary w-100 mb-3" onclick='openMoleculeEditor("jsmeModal", "smiles", "name")'><i class="bi bi-pen"></i> 绘制结构式</button>
+            <div id="structure_preview" class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.1);min-height:50px;"><span style="color:var(--text-muted);font-size:0.8rem;">点击上方按钮绘制化学结构式</span></div>
+            {{ form.smiles(class="form-control form-control-sm mt-2", id="smiles", placeholder="SMILES（自动生成）", style="font-family:monospace;font-size:0.8rem;") }}
+        </div></div></div>
+    </div>
+    <div class="row g-3 mt-2">
+        <div class="col-lg-6"><div class="card"><div class="card-header"><i class="bi bi-arrow-right-circle"></i> 原料 <span class="text-danger">*</span></div><div class="card-body">
+            <div class="input-group mb-2">{{ form.substrate(class="form-control", id="substrate_name", placeholder="原料名称") }}<button type="button" class="btn btn-outline-primary" onclick='openMoleculeEditor("jsmeModal", "substrate_smiles", "substrate_name")'><i class="bi bi-pen"></i></button></div>
+            <div id="substrate_smiles_preview" class="text-center p-2 rounded" style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.08);min-height:40px;"><span style="color:var(--text-muted);font-size:0.78rem;">绘制原料结构式</span></div>
+            {{ form.substrate_smiles(class="form-control form-control-sm mt-1", id="substrate_smiles", placeholder="SMILES", style="font-family:monospace;font-size:0.8rem;") }}
+        </div></div></div>
+        <div class="col-lg-6"><div class="card"><div class="card-header"><i class="bi bi-arrow-left-circle"></i> 产物</div><div class="card-body">
+            <div class="input-group mb-2"><input type="text" class="form-control" id="product_name" placeholder="产物名称"><button type="button" class="btn btn-outline-success" onclick='openMoleculeEditor("jsmeModal", "product_smiles", "product_name")'><i class="bi bi-pen"></i></button></div>
+            <div id="product_smiles_preview" class="text-center p-2 rounded" style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.08);min-height:40px;"><span style="color:var(--text-muted);font-size:0.78rem;">绘制产物结构式</span></div>
+            {{ form.product_smiles(class="form-control form-control-sm mt-1", id="product_smiles", placeholder="SMILES（可选）", style="font-family:monospace;font-size:0.8rem;") }}
+        </div></div></div>
+    </div>
+    <div class="row g-3 mt-2"><div class="col-12"><div class="card"><div class="card-header"><i class="bi bi-bookmark"></i> 参考来源</div><div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3"><label class="form-label">{{ form.reference_type.label.text }}</label>{{ form.reference_type(class="form-select") }}</div>
+            <div class="col-md-4" id="doi_field" style="display:none"><label class="form-label">{{ form.doi.label.text }}</label>{{ form.doi(class="form-control", placeholder="10.xxx/xxxxx") }}</div>
+            <div class="col-md-4" id="patent_field" style="display:none"><label class="form-label">{{ form.patent_number.label.text }}</label>{{ form.patent_number(class="form-control", placeholder="CNxxxxxx / USxxxxxx") }}</div>
+        </div>
+    </div></div></div></div>
+
+    <div class="row g-3 mt-2"><div class="col-12"><div class="card"><div class="card-header"><i class="bi bi-motherboard"></i> 电极参数</div><div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3"><label class="form-label">{{ form.we_material.label.text }} <span class="text-danger">*</span></label>{{ form.we_material(class="form-control", placeholder="Pt, GC, Ni泡沫...") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.we_area.label.text }}</label>{{ form.we_area(class="form-control", placeholder="cm²") }}</div>
+            <div class="col-md-3"><label class="form-label">{{ form.we_geometry.label.text }}</label>{{ form.we_geometry(class="form-control", placeholder="平板, 网格, RDE...") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.re_type.label.text }}</label>{{ form.re_type(class="form-control", placeholder="Ag/AgCl, SCE...") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.ce_material.label.text }}</label>{{ form.ce_material(class="form-control", placeholder="Pt片, 碳棒...") }}</div>
+        </div>
+        <div class="mt-2"><label class="form-label">{{ form.we_pretreatment.label.text }}</label>{{ form.we_pretreatment(class="form-control", rows=2, placeholder="抛光、超声清洗等预处理步骤") }}</div>
+    </div></div></div></div>
+
+    <div class="row g-3 mt-2"><div class="col-12"><div class="card"><div class="card-header"><i class="bi bi-droplet"></i> 溶液体系参数</div><div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3"><label class="form-label">{{ form.solvent.label.text }} <span class="text-danger">*</span></label>{{ form.solvent(class="form-control", placeholder="水, MeCN, DMF...") }}</div>
+            <div class="col-md-3"><label class="form-label">{{ form.substrate.label.text }} <span class="text-danger">*</span></label>{{ form.substrate(class="form-control", placeholder="H₂O, CO₂...") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.substrate_conc.label.text }}</label>{{ form.substrate_conc(class="form-control", placeholder="M") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.electrolyte.label.text }}</label>{{ form.electrolyte(class="form-control", placeholder="KOH, LiClO₄...") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.electrolyte_conc.label.text }}</label>{{ form.electrolyte_conc(class="form-control", placeholder="M") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.ph.label.text }}</label>{{ form.ph(class="form-control", placeholder="0-14", step="0.1") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.temperature.label.text }}</label>{{ form.temperature(class="form-control", placeholder="℃") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.stirring_rpm.label.text }}</label>{{ form.stirring_rpm(class="form-control", placeholder="rpm") }}</div>
+            <div class="col-md-3"><label class="form-label">{{ form.atmosphere.label.text }}</label>{{ form.atmosphere(class="form-control", placeholder="N₂, Ar, CO₂饱和...") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.feed_mode.label.text }}</label>{{ form.feed_mode(class="form-select") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.feed_rate.label.text }}</label>{{ form.feed_rate(class="form-control", placeholder="mL/min") }}</div>
+        </div>
+    </div></div></div></div>
+
+    <div class="row g-3 mt-2"><div class="col-12"><div class="card"><div class="card-header"><i class="bi bi-box"></i> 反应器与环境</div><div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3"><label class="form-label">{{ form.cell_type.label.text }}</label>{{ form.cell_type(class="form-select") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.cell_volume.label.text }}</label>{{ form.cell_volume(class="form-control", placeholder="mL") }}</div>
+            <div class="col-md-3"><label class="form-label">{{ form.separator.label.text }}</label>{{ form.separator(class="form-control", placeholder="Nafion 117...") }}</div>
+        </div>
+    </div></div></div></div>
+
+    <div class="row g-3 mt-2"><div class="col-12"><div class="card"><div class="card-header"><i class="bi bi-lightning"></i> 电化学参数</div><div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3"><label class="form-label">{{ form.electro_mode.label.text }} <span class="text-danger">*</span></label>{{ form.electro_mode(class="form-select" + (" is-invalid" if form.electro_mode.errors else "")) }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.current.label.text }}</label>{{ form.current(class="form-control", placeholder="A") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.potential.label.text }}</label>{{ form.potential(class="form-control", placeholder="V") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.scan_rate.label.text }}</label>{{ form.scan_rate(class="form-control", placeholder="mV/s") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.total_charge.label.text }}</label>{{ form.total_charge(class="form-control", placeholder="C") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.duration.label.text }}</label>{{ form.duration(class="form-control") }}</div>
+            <div class="col-md-1"><label class="form-label">{{ form.duration_unit.label.text }}</label>{{ form.duration_unit(class="form-select") }}</div>
+        </div>
+    </div></div></div></div>
+
+    <div class="row g-3 mt-2"><div class="col-12"><div class="card"><div class="card-header"><i class="bi bi-star"></i> 催化剂与光照</div><div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3"><label class="form-label">{{ form.catalyst.label.text }}</label>{{ form.catalyst(class="form-control") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.catalyst_load.label.text }}</label>{{ form.catalyst_load(class="form-control", placeholder="mg") }}</div>
+            <div class="col-md-3"><label class="form-label">{{ form.additives.label.text }}</label>{{ form.additives(class="form-control") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.light_source.label.text }}</label>{{ form.light_source(class="form-control", placeholder="LED, 氙灯...") }}</div>
+            <div class="col-md-1"><label class="form-label">{{ form.light_intensity.label.text }}</label>{{ form.light_intensity(class="form-control", placeholder="mW/cm²") }}</div>
+            <div class="col-md-1"><label class="form-label">{{ form.light_duration.label.text }}</label>{{ form.light_duration(class="form-control", placeholder="s") }}</div>
+        </div>
+    </div></div></div></div>
+
+    <div class="row g-3 mt-2"><div class="col-12"><div class="card"><div class="card-header"><i class="bi bi-graph-up"></i> 测量与分析参数</div><div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3"><label class="form-label">{{ form.measurement_method.label.text }}</label>{{ form.measurement_method(class="form-control", placeholder="CV, CP, LSV, EIS...") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.sampling_rate.label.text }}</label>{{ form.sampling_rate(class="form-control", placeholder="Hz") }}</div>
+            <div class="col-md-3"><label class="form-label">{{ form.analysis_method.label.text }}</label>{{ form.analysis_method(class="form-control", placeholder="GC, HPLC, NMR...") }}</div>
+            <div class="col-md-2"><label class="form-label">{{ form.uncertainty.label.text }}</label>{{ form.uncertainty(class="form-control", placeholder="%") }}</div>
+        </div>
+    </div></div></div></div>
+
+    <div class="row g-3 mt-2"><div class="col-12"><div class="card"><div class="card-header"><i class="bi bi-gear"></i> 其他信息</div><div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3"><label class="form-label">{{ form.instrument_model.label.text }}</label>{{ form.instrument_model(class="form-control", placeholder="CHI760E...") }}</div>
+            <div class="col-md-3"><label class="form-label">{{ form.operator_name.label.text }}</label>{{ form.operator_name(class="form-control", placeholder="操作人员姓名") }}</div>
+            <div class="col-md-3"><label class="form-label">{{ form.waste_category.label.text }}</label>{{ form.waste_category(class="form-control") }}</div>
+            <div class="col-md-3"><label class="form-label">{{ form.safety_info.label.text }}</label>{{ form.safety_info(class="form-control", rows=2) }}</div>
+        </div>
+        <div class="mt-2"><label class="form-label">{{ form.notes.label.text }}</label>{{ form.notes(class="form-control", rows=3) }}</div>
+    </div></div></div></div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary btn-lg" style="flex:1;">保存实验</button>
+        <a href="{{ url_for('experiment_list') }}" class="btn btn-outline-secondary btn-lg" style="flex:1;">取消</a>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var sel = document.querySelector('[name=reference_type]');
+    if (sel) {
+        sel.addEventListener('change', function() {
+            document.getElementById('doi_field').style.display = this.value === 'literature' ? '' : 'none';
+            document.getElementById('patent_field').style.display = this.value === 'patent' ? '' : 'none';
+        });
+    }
+    var dtInput = document.querySelector('input[type="datetime-local"]');
+    if (dtInput && !dtInput.value) {
+        var now = new Date();
+        var local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+        dtInput.value = local.toISOString().slice(0, 16);
+    }
+});
+</script>
+
+{% endblock %}
+{% block extra_scripts %}
+{% endblock %}
