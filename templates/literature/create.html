@@ -1,0 +1,42 @@
+﻿{% extends "base.html" %}
+{% block title %}{% if edit %}编辑文献{% else %}添加文献{% endif %} - EChemDB{% endblock %}
+{% block page_title %}<i class="bi bi-{% if edit %}pencil{% else %}plus-circle{% endif %}"></i> {% if edit %}编辑文献{% else %}添加文献 / 专利{% endif %}{% endblock %}
+{% block content %}
+<form method="POST" class="needs-validation" novalidate>
+    {{ form.hidden_tag() }}
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;">
+        <div class="card"><div class="card-header"><i class="bi bi-info-circle"></i> 基本信息</div><div class="card-body">
+            <div style="margin-bottom:0.6rem;"><label class="form-label">{{ form.title.label.text }} <span style="color:var(--red);">*</span></label>{{ form.title(class="form-control" + (" is-invalid" if form.title.errors else ""), placeholder="文献标题或专利名称") }}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+                <div><label class="form-label">{{ form.authors.label.text }}</label>{{ form.authors(class="form-control", placeholder="作者1, 作者2, ...") }}</div>
+                <div><label class="form-label">{{ form.journal.label.text }}</label>{{ form.journal(class="form-control", placeholder="期刊名称 / 来源") }}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:0.5rem;margin-top:0.5rem;">
+                <div><label class="form-label">{{ form.year.label.text }}</label>{{ form.year(class="form-control", placeholder="年份") }}</div>
+                <div><label class="form-label">{{ form.volume.label.text }}</label>{{ form.volume(class="form-control", placeholder="卷") }}</div>
+                <div><label class="form-label">{{ form.issue.label.text }}</label>{{ form.issue(class="form-control", placeholder="期") }}</div>
+                <div><label class="form-label">{{ form.pages.label.text }}</label>{{ form.pages(class="form-control", placeholder="页码") }}</div>
+                <div><label class="form-label">{{ form.literature_type.label.text }}</label>{{ form.literature_type(class="form-select") }}</div>
+            </div>
+        </div></div>
+        <div class="card"><div class="card-header"><i class="bi bi-link-45deg"></i> 标识与链接</div><div class="card-body">
+            <div style="margin-bottom:0.6rem;"><label class="form-label">{{ form.doi.label.text }}</label>{{ form.doi(class="form-control", placeholder="10.xxxx/xxxxx") }}</div>
+            <div style="margin-bottom:0.6rem;"><label class="form-label">{{ form.patent_number.label.text }}</label>{{ form.patent_number(class="form-control", placeholder="CNxxxxxx / USxxxxxx") }}</div>
+            <div><label class="form-label">{{ form.url.label.text }}</label>{{ form.url(class="form-control", placeholder="https://...") }}</div>
+        </div></div>
+    </div>
+    <div class="card" style="margin-top:0.5rem;"><div class="card-header"><i class="bi bi-card-text"></i> 摘要与分类</div><div class="card-body">
+        <div style="margin-bottom:0.6rem;">{{ form.abstract(class="form-control", rows=4, placeholder="输入文献摘要...") }}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;">
+            <div><label class="form-label">{{ form.keywords.label.text }}</label>{{ form.keywords(class="form-control", placeholder="关键词1, 关键词2") }}</div>
+            <div><label class="form-label">{{ form.research_field.label.text }}</label>{{ form.research_field(class="form-control", placeholder="如: CO2电还原") }}</div>
+            <div><label class="form-label">{{ form.reaction_type.label.text }}</label>{{ form.reaction_type(class="form-control", placeholder="如: 氧化, 还原") }}</div>
+        </div>
+    </div></div>
+    <div class="card" style="margin-top:0.5rem;"><div class="card-header"><i class="bi bi-journal-text"></i> 备注</div><div class="card-body">{{ form.notes(class="form-control", rows=2, placeholder="...") }}</div></div>
+    <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('literature_list') }}" class="btn btn-ghost">取消</a>
+    </div>
+</form>
+{% endblock %}
