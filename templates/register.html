@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}注册 - 电化学数据库{% endblock %}
+{% block body_class %}center-layout{% endblock %}
+{% block content %}
+<div style="width:100%;max-width:400px;">
+  <div class="card" style="padding:2.5rem 2rem;">
+    <div class="text-center mb-4">
+      <i class="bi bi-person-plus" style="font-size:2.5rem;color:var(--accent-cyan);"></i>
+      <h4 style="color:#fff;font-weight:700;margin-top:0.5rem;">创建新账号</h4>
+    </div>
+    <form method="POST" style="display:flex;flex-direction:column;gap:0.85rem;">
+      {{ form.hidden_tag() }}
+      <div><label class="form-label">{{ form.username.label.text }}</label>{{ form.username(class="form-control", placeholder="输入用户名") }}</div>
+      <div><label class="form-label">{{ form.email.label.text }}</label>{{ form.email(class="form-control", placeholder="输入邮箱") }}</div>
+      <div><label class="form-label">{{ form.password.label.text }}</label>{{ form.password(class="form-control", placeholder="输入密码（至少6位）") }}</div>
+      <div><label class="form-label">{{ form.affiliation.label.text }}</label>{{ form.affiliation(class="form-control", placeholder="所属单位（选填）") }}</div>
+      <button type="submit" class="btn btn-primary" style="margin-top:0.3rem;padding:0.6rem 0;">注册</button>
+    </form>
+    <div class="text-center mt-3">
+      <small style="color:var(--text-muted);">已有账号？ <a href="{{ url_for('login') }}" style="color:var(--accent-cyan);">登录</a></small>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<style>
+.center-layout .wrapper{min-height:100vh;display:flex;align-items:center;justify-content:center;background:transparent}
+.center-layout .sidebar,.center-layout .topbar,.center-layout .footer-text{display:none!important}
+.center-layout .main-content{width:100%;max-width:400px;margin:0 auto;padding:2rem}
+</style>
+{% endblock %}
