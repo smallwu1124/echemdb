@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{% if analysis %}编辑分析{% else %}添加分析{% endif %} - 电化学数据库{% endblock %}
+{% block page_title %}{% if analysis %}编辑分析结果{% else %}添加分析结果{% endif %} - {{ experiment.name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-bar-chart me-1"></i>
+        实验后结论记录
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                根据电化学报告指南（ACS, JACS），记录实验后的量化分析结果。系统将自动计算相对标准偏差 (RSD)。
+            </div>
+            
+            <h6 class="text-primary mb-3"><i class="bi bi-calculator"></i> 主要指标</h6>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    {{ form.yield_pct.label(class="form-label") }}
+                    {{ form.yield_pct(class="form-control", placeholder="0-100%") }}
+                    <small class="text-muted">产率 = (实际产物摩尔数 / 起始底物摩尔数) × 100%</small>
+                </div>
+                <div class="col-md-3">
+                    {{ form.selectivity.label(class="form-label") }}
+                    {{ form.selectivity(class="form-control", placeholder="0-100%") }}
+                    <small class="text-muted">目标产物占所有产物的比例</small>
+                </div>
+                <div class="col-md-3">
+                    {{ form.faraday_efficiency.label(class="form-label") }}
+                    {{ form.faraday_efficiency(class="form-control", placeholder="0-100%") }}
+                    <small class="text-muted">FE = (n·F·产物摩尔数) / 总电荷量 × 100%</small>
+                </div>
+                <div class="col-md-3">
+                    {{ form.num_replicates.label(class="form-label") }}
+                    {{ form.num_replicates(class="form-control", type="number", min="1") }}
+                </div>
+            </div>
+
+            <h6 class="text-primary mb-3"><i class="bi bi-repeat"></i> 重复性与统计</h6>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    {{ form.reproducibility_mean.label(class="form-label") }}
+                    {{ form.reproducibility_mean(class="form-control", placeholder="多次实验均值") }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.reproducibility_std.label(class="form-label") }}
+                    {{ form.reproducibility_std(class="form-control", placeholder="标准偏差") }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">自动计算 RSD</label>
+                    <div class="form-control-plaintext" id="rsdDisplay">-</div>
+                </div>
+            </div>
+
+            <h6 class="text-primary mb-3"><i class="bi bi-chat-dots"></i> 详细记录</h6>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    {{ form.byproducts.label(class="form-label") }}
+                    {{ form.byproducts(class="form-control", rows=3, placeholder="副反应/副产物信息") }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.anomalies.label(class="form-label") }}
+                    {{ form.anomalies(class="form-control", rows=3, placeholder="异常事件记录") }}
+                </div>
+                <div class="col-12">
+                    {{ form.notes.label(class="form-label") }}
+                    {{ form.notes(class="form-control", rows=3, placeholder="备注与结论") }}
+                </div>
+                <div class="col-12">
+                    {{ form.raw_data_path.label(class="form-label") }}
+                    {{ form.raw_data_path(class="form-control", placeholder="原始数据文件路径或备注") }}
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                {{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('experiment_detail', experiment_id=experiment.id) }}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const meanInput = document.getElementById('reproducibility_mean');
+    const stdInput = document.getElementById('reproducibility_std');
+    const rsdDisplay = document.getElementById('rsdDisplay');
+    
+    function updateRSD() {
+        const mean = parseFloat(meanInput.value);
+        const std = parseFloat(stdInput.value);
+        if (mean && std && mean > 0) {
+            const rsd = (std / mean * 100);
+            rsdDisplay.textContent = rsd.toFixed(2) + '%';
+        } else {
+            rsdDisplay.textContent = '-';
+        }
+    }
+    
+    meanInput.addEventListener('input', updateRSD);
+    stdInput.addEventListener('input', updateRSD);
+});
+</script>
+{% endblock %}
